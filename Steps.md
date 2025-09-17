@@ -1,4 +1,4 @@
-Got it 👍 You want an **end-to-end AWS serverless pipeline**:
+
 
 1. Save a **Power BI (or any) dashboard as PDF** into **S3**.
 2. That **triggers a Lambda function**.
