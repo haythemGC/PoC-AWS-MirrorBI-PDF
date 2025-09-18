@@ -77,65 +77,113 @@ Here’s a **Python sample**:
 import json
 import boto3
 import os
+import base64
 
-s3 = boto3.client("s3")
-bedrock = boto3.client("bedrock-runtime")
+s3 = boto3.client('s3')
+bedrock = boto3.client('bedrock-runtime')
 
-# Predefined question
-QUESTION = "Summarize the most important insights from this dashboard for use in recreating it in another BI tool."
+QUESTION = (
+    "Extract the most important information from this dashboard "
+    "that will help when recreating it in another BI tool. "
+    "Summarize KPIs, charts, filters, and key insights in structured JSON."
+)
+SCHEMA_INSTRUCTION = """
+Return the answer strictly in the following JSON format:
+
+{
+  "KPIs": [
+    {
+      "name": "string",
+      "value": "string",
+      "unit": "string (optional)"
+    }
+  ],
+  "Charts": [
+    {
+      "title": "string",
+      "type": "string (bar, line, pie, table, etc.)",
+      "x_axis": "string",
+      "y_axis": "string",
+      "metrics": ["list of metrics shown"],
+      "dimensions": ["list of dimensions used"]
+    }
+  ],
+  "Filters": [
+    {
+      "name": "string",
+      "type": "string (dropdown, date range, checkbox, etc.)",
+      "values": ["list of available values"]
+    }
+  ],
+  "Insights": [
+    "string (key observation or conclusion from the dashboard)"
+  ]
+}
+"""
+
 
 def lambda_handler(event, context):
-    # 1. Get S3 event details
+    
     bucket = event['Records'][0]['s3']['bucket']['name']
     key = event['Records'][0]['s3']['object']['key']
 
-    # 2. Download the PDF
-    local_file = '/tmp/input.pdf'
+    local_file = "/tmp/input.pdf"
     s3.download_file(bucket, key, local_file)
 
-    # 3. Read PDF as base64 text
-    with open(local_file, "rb") as f:
-        pdf_bytes = f.read()
-
-    # Convert to base64 string
-    import base64
-    encoded_pdf = base64.b64encode(pdf_bytes).decode("utf-8")
-
-    # 4. Send to Bedrock Claude
-    prompt = f"""
-    You are given a dashboard in PDF format.
-    Task: {QUESTION}
-    Provide a structured JSON response with the key insights.
-    """
-
+    with open(local_file, "rb") as pdf_file:
+        encoded_pdf = base64.b64encode(pdf_file.read()).decode("utf-8")
+    
+    request_body = {
+    "anthropic_version": "bedrock-2023-05-31",
+    "messages": [
+        {
+            "role": "user",
+            "content": [
+                {
+                    "type": "document",
+                    "source": {
+                        "type": "base64",
+                        "media_type": "application/pdf",
+                        "data": encoded_pdf
+                    },
+                    "title": os.path.basename(key),
+                    "citations": {"enabled": True},
+                    "cache_control": {"type": "ephemeral"}
+                },
+                {
+                    "type": "text",
+                    "text": f" {QUESTION}\n\n{SCHEMA_INSTRUCTION}"
+                }
+            ]
+        }
+    ],
+    "max_tokens": 1500
+}
     response = bedrock.invoke_model(
-        modelId="anthropic.claude-3-sonnet-20240229-v1:0",
+        modelId="eu.anthropic.claude-sonnet-4-20250514-v1:0",
         contentType="application/json",
         accept="application/json",
-        body=json.dumps({
-            "messages": [
-                {"role": "user", "content": [
-                    {"type": "text", "text": prompt},
-                    {"type": "document", "name": "dashboard.pdf", "media_type": "application/pdf", "data": encoded_pdf}
-                ]}
-            ],
-            "max_tokens": 500
-        })
+        body=json.dumps(request_body)
     )
-
-    result = json.loads(response['body'].read())
-    output_text = result['output']['content'][0]['text']
-
-    # 5. Save JSON result back to S3
+    response_body = json.loads(response["body"].read())
     output_key = key.replace("input/", "output/").replace(".pdf", ".json")
+    result_json = {
+    "source_file": key,
+    "summary": response_body
+    }
     s3.put_object(
         Bucket=bucket,
         Key=output_key,
-        Body=json.dumps({"summary": output_text}, indent=2),
+        Body=json.dumps(result_json),
         ContentType="application/json"
     )
+ 
+    return {
+        "status": "success",
+        "bucket": bucket,
+        "output_file": output_key
+    }
 
-    return {"status": "success", "output_file": output_key}
 ```
 
 ---
@@ -149,7 +197,20 @@ def lambda_handler(event, context):
 
 3. JSON summary is saved into:
    `s3://dashboard-analysis-bucket/output/my_dashboard.json`
-
+4. Create test event:
+   * add event name **TestPDFUpload**.
+   * the event:
+     ` {
+  "Records": [
+    {
+      "s3": {
+        "bucket": { "name": "dashboard-analysis-bucket" },
+        "object": { "key": "input/Competitive Marketing Analysis.pdf" }
+      }
+    }
+  ]
+}
+ `
 ---
 
 ## **8. Monitoring & Logs**
@@ -167,4 +228,4 @@ def lambda_handler(event, context):
 
 ---
 
-👉 Do you want me to also **give you Terraform/CloudFormation** steps to automate all this setup, or you prefer to deploy it **manually from the AWS console**?
+
