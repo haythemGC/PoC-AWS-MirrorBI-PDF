@@ -1,1 +1,132 @@
-{"source_file": "input/Competitive Marketing Analysis.pdf", "summary": {"id": "msg_bdrk_014w7X7gjNXo3VENYuUaJ3AR", "type": "message", "role": "assistant", "model": "claude-sonnet-4-20250514", "content": [{"type": "text", "text": "Looking at this Competitive Marketing Analysis Report dashboard, I'll extract the key information needed to recreate it in another BI tool.\n\n```json\n{\n  \"KPIs\": [\n    {\n      \"name\": \"Total Sales\",\n      \"value\": \"32K\",\n      \"unit\": \"USD\"\n    },\n    {\n      \"name\": \"Online Sales\",\n      \"value\": \"15K\",\n      \"unit\": \"USD\"\n    },\n    {\n      \"name\": \"Social Media Sales\",\n      \"value\": \"9,262\",\n      \"unit\": \"USD\"\n    },\n    {\n      \"name\": \"Stores Sales\",\n      \"value\": \"6,746\",\n      \"unit\": \"USD\"\n    },\n    {\n      \"name\": \"Outlet Sales\",\n      \"value\": \"1,338\",\n      \"unit\": \"USD\"\n    },\n    {\n      \"name\": \"Overall ROI\",\n      \"value\": \"7\",\n      \"unit\": \"%\"\n    },\n    {\n      \"name\": \"Online ROI\",\n      \"value\": \"12\",\n      \"unit\": \"%\"\n    },\n    {\n      \"name\": \"Social Media ROI\",\n      \"value\": \"0\",\n      \"unit\": \"%\"\n    },\n    {\n      \"name\": \"Stores ROI\",\n      \"value\": \"5\",\n      \"unit\": \"%\"\n    },\n    {\n      \"name\": \"Outlet ROI\",\n      \"value\": \"18\",\n      \"unit\": \"%\"\n    }\n  ],\n  \"Charts\": [\n    {\n      \"title\": \"Total Sales by Channel\",\n      \"type\": \"pie\",\n      \"x_axis\": \"Channel\",\n      \"y_axis\": \"Sales Amount\",\n      \"metrics\": [\"Sales Amount\", \"Percentage\"],\n      \"dimensions\": [\"Online\", \"Social Media\", \"Outlet\", \"Stores\"]\n    },\n    {\n      \"title\": \"Total Sales by Channel Over Time\",\n      \"type\": \"line\",\n      \"x_axis\": \"Month\",\n      \"y_axis\": \"Sales Amount\",\n      \"metrics\": [\"Sales Amount\"],\n      \"dimensions\": [\"Online\", \"Social Media\", \"Outlet\", \"Stores\", \"Month\"]\n    },\n    {\n      \"title\": \"Total Sales by Product and Channel\",\n      \"type\": \"horizontal bar\",\n      \"x_axis\": \"Sales Amount\",\n      \"y_axis\": \"Product\",\n      \"metrics\": [\"Sales Amount\"],\n      \"dimensions\": [\"Product\", \"Channel\"]\n    },\n    {\n      \"title\": \"Total Sales by Channel and State\",\n      \"type\": \"treemap\",\n      \"x_axis\": \"State\",\n      \"y_axis\": \"Sales Amount\",\n      \"metrics\": [\"Sales Amount\"],\n      \"dimensions\": [\"Channel\", \"State\"]\n    },\n    {\n      \"title\": \"Sales and ROI Over Time\",\n      \"type\": \"combo (bar + line)\",\n      \"x_axis\": \"Month\",\n      \"y_axis\": \"Sales Amount / ROI Percentage\",\n      \"metrics\": [\"Total Sales\", \"ROI\"],\n      \"dimensions\": [\"Month\"]\n    },\n    {\n      \"title\": \"ROI by Product\",\n      \"type\": \"horizontal bar\",\n      \"x_axis\": \"ROI Percentage\",\n      \"y_axis\": \"Product\",\n      \"metrics\": [\"ROI\"],\n      \"dimensions\": [\"Product\", \"Channel\"]\n    },\n    {\n      \"title\": \"Return on Investment (ROI)\",\n      \"type\": \"gauge/donut\",\n      \"x_axis\": \"ROI Category\",\n      \"y_axis\": \"ROI Percentage\",\n      \"metrics\": [\"ROI Percentage\"],\n      \"dimensions\": [\"Overall ROI\"]\n    }\n  ],\n  \"Filters\": [\n    {\n      \"name\": \"Channel\",\n      \"type\": \"multi-select\",\n      \"values\": [\"Online Sales\", \"Social Media\", \"Store Sales\", \"Outlet Sales\"]\n    },\n    {\n      \"name\": \"Time Period\",\n      \"type\": \"date range\",\n      \"values\": [\"Monthly data across multiple years\"]\n    },\n    {\n      \"name\": \"State/Region\",\n      \"type\": \"multi-select\",\n      \"values\": [\"CA\", \"PA\", \"NY\", \"MI\", \"GA\", \"WA\", \"CO\", \"LA\", \"KS\"]\n    },\n    {\n      \"name\": \"Product\",\n      \"type\": \"multi-select\",\n      \"values\": [\"Maximus UM-70\", \"Maximus UM-11\", \"Maximus UM-54\", \"Maximus UM-12\", \"Pirum UE-13\", \"Maximus UM-66\", \"Maximus UC-50\", \"Pomum UM-05\", \"Victoria UM-01\", \"Aliqui UM-04\", \"Currus UM-01\", \"Victoria UM-13\", \"Barba UM-05\", \"Aliqui UM-07\", \"Abbas UM-24\", \"Abbas UM-33\", \"Natura UM-18\", \"Natura UM-04\", \"Maximus UM-20\", \"Maximus UM-76\", \"Maximus UM-94\", \"Leo UM-07\", \"Leo UM-06\", \"Barba UM-07\", \"Leo UM-17\", \"Abbas UM-42\", \"Barba UM-12\", \"Natura UM-12\"]\n    }\n  ],\n  \"Insights\": [\n    \"Online channel generates the highest sales at $15K (45.84% of total sales) with 12% ROI\",\n    \"Social Media is the second largest channel at $9,262 (28.92%) but has 0% ROI, indicating profitability issues\",\n    \"Outlet channel has the highest ROI at 18% despite lowest sales volume of $1,338\",\n    \"Top performing products are Maximus UM-70 ($2,359), Maximus UM-11 ($2,118), and Maximus UM-54 ($1,917)\",\n    \"Pomum UM-05 shows exceptional ROI performance at 700%, followed by Victoria UM-01 at 600%\",\n    \"California (CA) appears to be the strongest performing"}], "stop_reason": "max_tokens", "stop_sequence": null, "usage": {"input_tokens": 261, "cache_creation_input_tokens": 6458, "cache_read_input_tokens": 0, "output_tokens": 1500}}}
+{
+  "source_file": "input/Competitive Marketing Analysis.pdf",
+  "summary": {
+    "id": "msg_bdrk_014w7X7gjNXo3VENYuUaJ3AR",
+    "type": "message",
+    "role": "assistant",
+    "model": "claude-sonnet-4-20250514",
+    "content": [
+      {
+        "type": "text",
+        "text": "Looking at this Competitive Marketing Analysis Report dashboard, I'll extract the key information needed to recreate it in another BI tool.",
+        "json_summary": {
+          "KPIs": [
+            {"name": "Total Sales", "value": "32K", "unit": "USD"},
+            {"name": "Online Sales", "value": "15K", "unit": "USD"},
+            {"name": "Social Media Sales", "value": "9,262", "unit": "USD"},
+            {"name": "Stores Sales", "value": "6,746", "unit": "USD"},
+            {"name": "Outlet Sales", "value": "1,338", "unit": "USD"},
+            {"name": "Overall ROI", "value": "7", "unit": "%"},
+            {"name": "Online ROI", "value": "12", "unit": "%"},
+            {"name": "Social Media ROI", "value": "0", "unit": "%"},
+            {"name": "Stores ROI", "value": "5", "unit": "%"},
+            {"name": "Outlet ROI", "value": "18", "unit": "%"}
+          ],
+          "Charts": [
+            {
+              "title": "Total Sales by Channel",
+              "type": "pie",
+              "x_axis": "Channel",
+              "y_axis": "Sales Amount",
+              "metrics": ["Sales Amount", "Percentage"],
+              "dimensions": ["Online", "Social Media", "Outlet", "Stores"]
+            },
+            {
+              "title": "Total Sales by Channel Over Time",
+              "type": "line",
+              "x_axis": "Month",
+              "y_axis": "Sales Amount",
+              "metrics": ["Sales Amount"],
+              "dimensions": ["Online", "Social Media", "Outlet", "Stores", "Month"]
+            },
+            {
+              "title": "Total Sales by Product and Channel",
+              "type": "horizontal bar",
+              "x_axis": "Sales Amount",
+              "y_axis": "Product",
+              "metrics": ["Sales Amount"],
+              "dimensions": ["Product", "Channel"]
+            },
+            {
+              "title": "Total Sales by Channel and State",
+              "type": "treemap",
+              "x_axis": "State",
+              "y_axis": "Sales Amount",
+              "metrics": ["Sales Amount"],
+              "dimensions": ["Channel", "State"]
+            },
+            {
+              "title": "Sales and ROI Over Time",
+              "type": "combo (bar + line)",
+              "x_axis": "Month",
+              "y_axis": "Sales Amount / ROI Percentage",
+              "metrics": ["Total Sales", "ROI"],
+              "dimensions": ["Month"]
+            },
+            {
+              "title": "ROI by Product",
+              "type": "horizontal bar",
+              "x_axis": "ROI Percentage",
+              "y_axis": "Product",
+              "metrics": ["ROI"],
+              "dimensions": ["Product", "Channel"]
+            },
+            {
+              "title": "Return on Investment (ROI)",
+              "type": "gauge/donut",
+              "x_axis": "ROI Category",
+              "y_axis": "ROI Percentage",
+              "metrics": ["ROI Percentage"],
+              "dimensions": ["Overall ROI"]
+            }
+          ],
+          "Filters": [
+            {
+              "name": "Channel",
+              "type": "multi-select",
+              "values": ["Online Sales", "Social Media", "Store Sales", "Outlet Sales"]
+            },
+            {
+              "name": "Time Period",
+              "type": "date range",
+              "values": ["Monthly data across multiple years"]
+            },
+            {
+              "name": "State/Region",
+              "type": "multi-select",
+              "values": ["CA", "PA", "NY", "MI", "GA", "WA", "CO", "LA", "KS"]
+            },
+            {
+              "name": "Product",
+              "type": "multi-select",
+              "values": [
+                "Maximus UM-70","Maximus UM-11","Maximus UM-54","Maximus UM-12",
+                "Pirum UE-13","Maximus UM-66","Maximus UC-50","Pomum UM-05",
+                "Victoria UM-01","Aliqui UM-04","Currus UM-01","Victoria UM-13",
+                "Barba UM-05","Aliqui UM-07","Abbas UM-24","Abbas UM-33",
+                "Natura UM-18","Natura UM-04","Maximus UM-20","Maximus UM-76",
+                "Maximus UM-94","Leo UM-07","Leo UM-06","Barba UM-07",
+                "Leo UM-17","Abbas UM-42","Barba UM-12","Natura UM-12"
+              ]
+            }
+          ],
+          "Insights": [
+            "Online channel generates the highest sales at $15K (45.84% of total sales) with 12% ROI",
+            "Social Media is the second largest channel at $9,262 (28.92%) but has 0% ROI, indicating profitability issues",
+            "Outlet channel has the highest ROI at 18% despite lowest sales volume of $1,338",
+            "Top performing products are Maximus UM-70 ($2,359), Maximus UM-11 ($2,118), and Maximus UM-54 ($1,917)",
+            "Pomum UM-05 shows exceptional ROI performance at 700%, followed by Victoria UM-01 at 600%",
+            "California (CA) appears to be the strongest performing"
+          ]
+        }
+      }
+    ],
+    "stop_reason": "max_tokens",
+    "usage": {
+      "input_tokens": 261,
+      "cache_creation_input_tokens": 6458,
+      "cache_read_input_tokens": 0,
+      "output_tokens": 1500
+    }
+  }
+}
