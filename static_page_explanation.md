@@ -1,280 +1,499 @@
-Great — I’ll walk through **every part** of that HTML page and explain what each line / block does, why it’s there, and what you should change in a real deployment. I **won’t** paste the whole file again (it’s in your canvas), but I’ll describe it in exact order so you can follow the file line-by-line.
-
-If anything I explain is unclear, tell me which line number (or copy a short snippet) and I’ll explain that small piece even more.
+explain **everything** in `mirrorBI_index.html` file — including structure, CSS, and JavaScript logic.
 
 ---
 
-# Top of file — document type and `<html>` metadata
-
-1. `<!DOCTYPE html>`
-
-   * Declares the page is an **HTML5** document. It tells the browser how to parse and render the page.
-
-2. `<html lang="en">`
-
-   * Root element. `lang="en"` says the natural language is English (good for accessibility and search engines).
-
-3. `<head>` … `</head>` block
-
-   * The head contains metadata (information about the page, not visible content).
-
-Inside the `<head>`:
-
-4. `<meta charset="UTF-8" />`
-
-   * Sets the character encoding to UTF-8 (supports international characters).
-
-5. `<meta name="viewport" content="width=device-width, initial-scale=1.0" />`
-
-   * Ensures the page scales correctly on mobile devices (responsive layout).
-
-6. `<title>MirrorBI Upload</title>`
-
-   * The page title shown in the browser tab.
-
-7. `<script src="https://sdk.amazonaws.com/js/aws-sdk-2.1487.0.min.js"></script>`
-
-   * Loads the AWS JavaScript SDK v2 into the page. This makes the `AWS` global object available for interacting with AWS services (S3 used later).
-   * **Important security note:** including and using the AWS SDK in the browser is fine **only** if you provide **temporary** limited credentials (e.g., via Cognito or temporary token), **not** permanent access keys. The later code has a hard-coded credentials example — that is insecure for production (I'll explain safer options later).
-
-8. `<style>` … `</style>` block
-
-   * Inline CSS styles for the page. It defines the look: fonts, card layout, margins, `.hidden` class (which hides an element), and `#resultBox` visuals and `white-space: pre-wrap` so JSON displays nicely with line breaks.
-
----
-
-# Body content — visible UI
-
-Inside `<body>`:
-
-9. A container `<div class="card">`
-
-   * Holds the visible UI elements, centered and styled by CSS.
-
-10. `<h2>Upload PDF to MirrorBI</h2>`
-
-    * Page heading visible to the user.
-
-11. `<input type="file" id="fileInput" />`
-
-    * File selector control. `type="file"` allows the user to pick a file from their computer.
-    * In the version shown, there is no `accept` attribute, so any file type can be chosen; you can add `accept=".pdf,.csv"` to restrict types.
-
-12. `<button onclick="uploadFile()">Upload</button>`
-
-    * A button that, when clicked, calls the JavaScript function `uploadFile()` (defined later). The `onclick` attribute wires the button to that function.
-
-13. `<div id="status"></div>`
-
-    * Empty element where the script writes status messages (e.g., “Uploading…”, “Processing…”, or error messages).
-
-14. `<div id="resultBox" class="hidden"></div>`
-
-    * Element for showing the resulting JSON when processing completes. It starts hidden (`class="hidden"` sets `display:none`). The script removes that class when there is a result and inserts the JSON text inside.
-
----
-
-# The JavaScript — behavior and AWS calls
-
-All the behavior happens inside the `<script>` near the bottom. I’ll explain in order.
-
-### AWS configuration
-
-15. `AWS.config.update({ region: "us-east-1", credentials: new AWS.Credentials({ accessKeyId: "YOUR_ACCESS_KEY", secretAccessKey: "YOUR_SECRET_KEY" }) });`
-
-    * This configures the AWS SDK with:
-
-      * `region`: AWS region where your S3 bucket lives. Must match the bucket region.
-      * `credentials`: **permanent** access key & secret in this example (bad for production). These credentials allow the browser to sign requests to S3.
-    * **Why this is dangerous:** Putting long-lived access keys in client-side JavaScript exposes them to anyone who views the page source → attacker could use them to access your AWS resources. You should instead use **temporary credentials** (Cognito Identity Pool / STS) or server-side-generated **pre-signed URLs**.
-    * If you use temporary credentials the SDK code looks slightly different (you still set AWS.config with a credentials provider).
-
-16. `const s3 = new AWS.S3({ apiVersion: "2006-03-01" });`
-
-    * Creates an S3 client object that lets you call `putObject` and `getObject` from the browser via the SDK.
-
-17. `const bucketName = "your-bucket-name"; const uploadPrefix = "uploads/"; const resultPrefix = "results/";`
-
-    * `bucketName`: name of your S3 bucket. Replace with the actual bucket.
-    * `uploadPrefix`: the key prefix (like a folder) for user uploads. In your setup Lambda is triggered on `uploads/`.
-    * `resultPrefix`: where Lambda writes the analysis JSON, e.g. `results/filename.json`.
-
-### uploadFile() function
-
-18. `async function uploadFile() { ... }`
-
-    * Declares an asynchronous function to handle the upload when user clicks the button.
-
-Inside `uploadFile()`:
-
-19. `const fileInput = document.getElementById("fileInput");`
-
-    * Get the file input element from the DOM.
-
-20. `if (!fileInput.files.length) { alert("Please select a file first."); return; }`
-
-    * If no file selected, show an alert and stop.
-
-21. `const file = fileInput.files[0];`
-
-    * Grab the first (and usually only) selected file.
-
-22. `const uploadKey = uploadPrefix + file.name;`
-
-    * Build S3 object key for upload, e.g. `uploads/myfile.pdf`. This is the path S3 uses.
-
-23. `const resultKey = resultPrefix + file.name.replace(/\.[^/.]+$/, "") + ".json";`
-
-    * Build the expected result key. It:
-
-      * Takes the filename (`file.name`), strips any file extension using a regex (`replace(/\.[^/.]+$/, "")`), then adds `.json`.
-      * So `myfile.pdf` → `results/myfile.json`. This must match how your Lambda names the output JSON.
-
-24. `document.getElementById("status").innerText = "Uploading...";`
-
-    * Update UI so the user knows the upload has started.
-
-25. `await s3.putObject({ Bucket: bucketName, Key: uploadKey, Body: file, ContentType: file.type }).promise();`
-
-    * Uploads the file **directly from the browser** to S3:
-
-      * `Bucket`: the bucket name.
-      * `Key`: the path (uploadKey).
-      * `Body`: the file binary (browser `File` object).
-      * `ContentType`: MIME type, e.g., `application/pdf`. `file.type` is set by the browser when possible.
-    * `.promise()` converts the AWS Request into a JavaScript Promise so `await` works.
-    * If this succeeds, S3 now contains the uploaded file and — if you've configured S3 event notifications — the upload will trigger your Lambda.
-
-26. `document.getElementById("status").innerText = "File uploaded! Processing...";`
-
-    * Update UI after successful upload.
-
-27. `pollForResult(resultKey);`
-
-    * Starts polling (periodic checks) for the analysis JSON object in `results/`.
-
-28. `catch` block: logs error and shows status — standard error handling for upload failures (bad credentials, CORS, network errors, permission denied).
-
-### pollForResult() function
-
-29. `async function pollForResult(resultKey) { let attempts = 0; const maxAttempts = 20; const interval = 5000; ... }`
-
-    * Tries repeatedly to `getObject` from S3 to see when Lambda has written the JSON.
-    * `maxAttempts = 20` and `interval = 5000` mean it polls up to 20 times every 5 seconds → about 100 seconds total before giving up.
-
-30. `const check = async () => { attempts++; try { const data = await s3.getObject({ Bucket: bucketName, Key: resultKey }).promise(); ... } catch(err) { if (err.code === "NoSuchKey" && attempts < maxAttempts) { setTimeout(check, interval); } else { document.getElementById("status").innerText = "No result found yet. Try again later."; } } }; check();`
-
-    * `s3.getObject(...)`: attempts to download the result JSON from S3.
-    * Success path:
-
-      * `data.Body` is binary content of the object. The code decodes it and displays in the `resultBox`.
-      * `new TextDecoder("utf-8").decode(data.Body)` decodes the binary into a text string (JSON string).
-      * The `resultBox` is made visible and filled with the text, and `status` updated to success.
-    * Error path:
-
-      * If S3 responds with `NoSuchKey` (file doesn't exist yet), it sets a timeout and retries until `maxAttempts` is reached.
-      * If other errors happen or maxAttempts reached, it writes “No result found yet. Try again later.” (could be permission error, CORS, or Lambda failed).
-
----
-
-# Important operational & security details (do not skip)
-
-You must not deploy the example exactly as-is to production. Important items:
-
-### 1) **Never embed long-lived AWS access keys in client-side JS**
-
-* The lines that set `new AWS.Credentials({ accessKeyId: "YOUR_ACCESS_KEY", secretAccessKey: "YOUR_SECRET_KEY" })` are only okay for testing in a private environment. If you publish this page, anyone can view source and steal keys.
-* **Secure alternatives:**
-
-  * **Pre-signed PUT URL** (recommended): Your backend (server or Lambda behind API Gateway) *creates a pre-signed PUT URL* and returns it to the client. The browser then uploads with a `fetch(uploadUrl, { method: 'PUT', body: file })`. No credentials in browser required. Lambda triggering and pipeline remains the same.
-  * **Cognito Identity Pools**: Configure Cognito to provide temporary, limited credentials (with permissions only to `uploads/*` and read for `results/*`), then use the AWS SDK in-browser safely.
-  * **Backend upload proxy**: send file to your backend; backend stores in S3 and returns the result URL.
-
-### 2) **S3 CORS**
-
-* For browser PUT/GET to work you must set the S3 bucket CORS configuration to allow your static site origin and allow methods `PUT`, `GET`, `HEAD`, and required headers. Example JSON CORS (replace `https://your-site.example` with your site origin):
-
-```json
-[
-  {
-    "AllowedOrigins": ["https://your-site.example"],
-    "AllowedMethods": ["PUT", "GET", "HEAD", "POST"],
-    "AllowedHeaders": ["*"],
-    "MaxAgeSeconds": 3000
-  }
-]
+## 🧱 **HTML Structure**
+
+```html
+<!doctype html>
+<html lang="en">
 ```
 
-* Without CORS properly configured, browser requests to S3 will fail even if credentials are correct.
+* Declares the document type as **HTML5**.
+* The `lang="en"` attribute says the document language is English.
 
-### 3) **IAM permissions**
+---
 
-* The credentials used by the page must be restricted. Minimal permissions:
+### `<head>` Section
 
-  * Allow `s3:PutObject` on `arn:aws:s3:::your-bucket/uploads/*`
-  * Allow `s3:GetObject` on `arn:aws:s3:::your-bucket/results/*`
-* Example minimal IAM policy (JSON):
+```html
+<head>
+  <meta charset="utf-8" />
+```
 
-```json
-{
-  "Version": "2012-10-17",
-  "Statement": [
-    {
-      "Effect": "Allow",
-      "Action": ["s3:PutObject"],
-      "Resource": "arn:aws:s3:::your-bucket/uploads/*"
-    },
-    {
-      "Effect": "Allow",
-      "Action": ["s3:GetObject"],
-      "Resource": "arn:aws:s3:::your-bucket/results/*"
-    }
-  ]
+* Sets the character encoding to **UTF-8**, which supports all languages and symbols.
+
+```html
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+```
+
+* Makes the page **responsive** for mobile devices.
+* `width=device-width` makes it fit the device screen size.
+* `initial-scale=1` means zoom level is 100%.
+
+```html
+  <title>MirrorBI — Analyse</title>
+```
+
+* Sets the page title that appears in the browser tab.
+
+---
+
+### `<style>` Section
+
+The `<style>` block defines **CSS styling** for layout and design.
+
+```css
+:root{
+  --bg:#f6f7fb;
+  --card:#ffffff;
+  --accent:#0b69ff;
+  --muted:#64748b;
 }
 ```
 
-* If using pre-signed URLs, the backend that generates the URL must have `s3:PutObject` permission; the browser does not need credentials at all.
-
-### 4) **Naming and prefix convention must match Lambda**
-
-* The `uploadPrefix` and `resultPrefix` must match what your Lambda expects and what triggers it. For example, if Lambda triggers on `uploads/` and writes results to `results/`, the page must use the same prefixes and the Lambda must name the file the same way (i.e., `results/<original-name-without-ext>.json`).
-
-### 5) **Polling vs push notification**
-
-* Polling is simple but wasteful. If you want real-time updates and avoid repeated GETs, consider:
-
-  * Have Lambda publish a message to an SNS topic or SQS queue and your backend notify the client (via WebSocket or Server-Sent Events).
-  * OR have your backend provide an API `GET /status/<fileid>` that returns `processing | done` and the result URL.
+* Defines **CSS variables** for colors (background, accent, muted text, etc.)
+* These can be reused across styles using `var(--accent)`.
 
 ---
 
-# Debugging tips if something fails
+#### General styles
 
-* **Open Browser DevTools → Network tab** and watch the PUT to S3 and subsequent GET requests. Look for:
+```css
+*{box-sizing:border-box}
+```
 
-  * HTTP status codes (403 = permission denied, 400 = bad request, CORS errors appear in console).
-  * Request headers (Content-Type) — some CORS setups require `Content-Type` to be whitelisted.
-* **Check S3 object listing in the console** to confirm file exists under `uploads/`.
-* **CloudWatch logs** for your Lambda: see if it was triggered and whether it wrote a file to `results/`.
-* **Verify CORS**: look at response headers `Access-Control-Allow-Origin`.
-* **Check region**: The `region` value in SDK must match the bucket region.
+* Ensures padding and borders are included inside element width/height.
+
+```css
+body{
+  font-family:Inter, ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial;
+  background:var(--bg);
+  color:#0f172a;
+  margin:0;
+}
+```
+
+* Sets font family.
+* Gives a light gray background.
+* Text color is dark gray.
+* Removes default browser margins.
 
 ---
 
-# Quick recommended change (most secure, minimal code change)
+#### Header & Logo
 
-**Use pre-signed URLs.** Instead of storing credentials in page, do this flow:
+```css
+.header{
+  background:var(--card);
+  padding:18px 24px;
+  box-shadow:0 1px 4px rgba(16,24,40,0.06);
+  display:flex;
+  align-items:center;
+}
+.logo{
+  font-weight:700;
+  color:var(--accent);
+  letter-spacing:0.2px;
+}
+```
 
-1. Browser: POST `/get-presigned` with `{ filename }`.
-2. Backend: generate a pre-signed PUT URL for `uploads/filename` and a pre-signed GET URL for `results/<name>.json` (or return the result-key and let the browser build the expected result URL).
-3. Browser: `await fetch(uploadUrl, { method:'PUT', body: file });`
-4. Browser: poll `resultUrl` (no credentials required).
+* `.header` styles the top bar (white background, shadow, padding).
+* `.logo` defines the “MirrorBI” title in bold blue.
 
-* This keeps your keys on the server and gives minimal access.
+---
 
-If you want, I can now:
+#### Main container
 
-* Show an example **server endpoint** (NodeJS or Python boto3) that returns presigned URLs, or
-* Replace your current page in the canvas with a **presigned-URL version** of the JS (removes AWS credentials and uses `fetch` PUT).
+```css
+.wrap{
+  max-width:960px;
+  margin:32px auto;
+  padding:28px;
+}
+```
 
-Which one do you want next?
+* Centers the content and limits width to 960px.
+
+```css
+.card{
+  background:var(--card);
+  border-radius:12px;
+  padding:22px;
+  box-shadow:0 6px 18px rgba(15,23,42,0.06);
+}
+```
+
+* Creates a **card box** with rounded corners and subtle shadow.
+
+---
+
+#### Headings and Paragraphs
+
+```css
+h1{font-size:20px; margin:0 0 8px}
+p.lead{color:#475569; margin:0 0 18px}
+```
+
+* Styles the title and the small description text below it.
+
+---
+
+#### Buttons and File Input
+
+```css
+.controls{display:flex; gap:12px; align-items:center; flex-wrap:wrap}
+.file-select{display:flex; align-items:center; gap:10px}
+```
+
+* `.controls` arranges the file button and analyze button in one line.
+* `.file-select` aligns the “Select file” button and file name text.
+
+```css
+.btn{
+  background:var(--accent);
+  color:white;
+  border:0;
+  padding:10px 14px;
+  border-radius:8px;
+  cursor:pointer;
+  font-weight:600;
+}
+.btn.secondary{
+  background:#e6eefc;
+  color:var(--accent);
+}
+```
+
+* `.btn` styles all buttons (blue color, rounded, bold).
+* `.btn.secondary` is for the “Select file” button (light blue).
+
+```css
+input[type=file]{display:none}
+```
+
+* Hides the default file input (we trigger it manually with JS).
+
+```css
+.filename{
+  font-size:13px;
+  color:var(--muted);
+  max-width:420px;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+```
+
+* Shows selected file name neatly (truncates long names with “...”)
+
+---
+
+#### Spinner & Animation
+
+```css
+.spinner{
+  border:4px solid #f3f4f6;
+  border-top:4px solid var(--accent);
+  border-radius:50%;
+  width:28px;
+  height:28px;
+  animation:spin 1s linear infinite;
+}
+@keyframes spin{to{transform:rotate(360deg)}}
+```
+
+* Creates a rotating circle (spinner) while analyzing the file.
+
+---
+
+#### Results area and code block
+
+```css
+.results{margin-top:18px}
+.small{font-size:13px}
+.code{
+  background:#0b1220;
+  color:#e6eefc;
+  padding:12px;
+  border-radius:8px;
+  overflow:auto;
+  font-family:monospace;
+  font-size:13px;
+  max-height:320px;
+}
+```
+
+* `.results` gives space above results.
+* `.code` styles raw JSON output (dark background like a console).
+
+---
+
+#### Footer
+
+```css
+footer{
+  margin-top:14px;
+  text-align:center;
+  color:#94a3b8;
+  font-size:13px;
+}
+```
+
+* Adds footer text centered in light gray.
+
+---
+
+### `<body>` Content
+
+```html
+<header class="header"><div class="logo">MirrorBI</div></header>
+```
+
+* The page header with the “MirrorBI” logo.
+
+---
+
+#### Main Card Content
+
+```html
+<main class="wrap">
+  <div class="card">
+    <h1>Analyse your file</h1>
+    <p class="lead">Upload a file ... and fetch the JSON result back.</p>
+```
+
+* Explains what the user should do.
+
+---
+
+#### File selection controls
+
+```html
+<div class="controls">
+  <div class="file-select">
+    <button id="selectBtn" class="btn secondary">Select file (admin style)</button>
+    <input id="fileInput" type="file" accept=".pdf,.csv,.xlsx,.json" />
+    <div id="fileName" class="filename">No file selected</div>
+  </div>
+  <button id="analyseBtn" class="btn" disabled>Analyse</button>
+</div>
+```
+
+* “Select file” button (click triggers hidden file input).
+* Displays selected filename.
+* “Analyse” button starts processing — initially **disabled**.
+
+---
+
+```html
+<div id="resultsArea" class="results"></div>
+```
+
+* Placeholder for showing analysis results or errors.
+
+---
+
+```html
+<footer>...deploy this static page...</footer>
+```
+
+* Note about S3 deployment and backend setup.
+
+---
+
+## ⚙️ **JavaScript Logic**
+
+This makes the page interactive.
+
+---
+
+### Element references
+
+```js
+const fileInput = document.getElementById('fileInput');
+const selectBtn = document.getElementById('selectBtn');
+const fileName = document.getElementById('fileName');
+const analyseBtn = document.getElementById('analyseBtn');
+const resultsArea = document.getElementById('resultsArea');
+```
+
+* Stores references to important HTML elements for later use.
+
+---
+
+### Open file dialog
+
+```js
+selectBtn.addEventListener('click', () => fileInput.click());
+```
+
+* When you click the “Select file” button, it triggers the hidden file input.
+
+---
+
+### Handle file selection
+
+```js
+fileInput.addEventListener('change', () => {
+  const f = fileInput.files[0];
+  if (f) {
+    fileName.textContent = f.name;
+    analyseBtn.disabled = false;
+  } else {
+    fileName.textContent = 'No file selected';
+    analyseBtn.disabled = true;
+  }
+});
+```
+
+* When a file is chosen:
+
+  * Shows its name next to the button.
+  * Enables the “Analyse” button.
+
+---
+
+### Start analysis process
+
+```js
+analyseBtn.addEventListener('click', async () => {
+  const f = fileInput.files[0];
+  if (!f) return;
+
+  resultsArea.innerHTML = `<div style="display:flex;gap:12px;align-items:center;">
+    <div class="spinner"></div>
+    <div class="small">Analysing ${escapeHtml(f.name)} — please wait...</div>
+  </div>`;
+  analyseBtn.disabled = true; selectBtn.disabled = true;
+```
+
+* Shows a spinner and message “Analysing filename...”.
+* Disables both buttons during upload.
+
+---
+
+### Try to analyse the file
+
+```js
+try {
+  const json = await analyseFile(f);
+  resultsArea.innerHTML = renderResults(json);
+} catch(err) {
+  resultsArea.innerHTML = `<div class="small">Error: ${escapeHtml(err.message||err)}</div>`;
+} finally {
+  analyseBtn.disabled = false; selectBtn.disabled = false;
+}
+```
+
+* Calls `analyseFile(f)` to upload and get results.
+* If successful → display the formatted result.
+* If error → show error message.
+* Re-enable buttons at the end.
+
+---
+
+### Backend communication
+
+```js
+async function analyseFile(file) {
+  // Step 1: ask backend for pre-signed URLs
+  const presignRes = await fetch('/get-presigned-url', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ filename: file.name })
+  });
+  const { uploadUrl, resultUrl } = await presignRes.json();
+```
+
+* Sends the filename to backend endpoint `/get-presigned-url`.
+* Backend should return two URLs:
+
+  * `uploadUrl`: where to upload the file.
+  * `resultUrl`: where the JSON result will appear later.
+
+---
+
+```js
+  // Step 2: upload file to S3
+  await fetch(uploadUrl, {
+    method: 'PUT',
+    body: file
+  });
+```
+
+* Uploads the file directly to S3 using the presigned URL.
+
+---
+
+```js
+  // Step 3: poll for result JSON
+  let json = null;
+  for (let i = 0; i < 20; i++) {
+    await new Promise(r => setTimeout(r, 3000));
+    const res = await fetch(resultUrl);
+    if (res.ok) {
+      json = await res.json();
+      break;
+    }
+  }
+  if (!json) throw new Error("Result not ready in time.");
+  return json;
+}
+```
+
+* Waits up to **60 seconds (20 × 3s)** checking S3 for the result JSON.
+* If it appears, returns it; otherwise throws an error.
+
+---
+
+### Render analysis result
+
+```js
+function renderResults(json){
+  return `
+    <div style="background:var(--card); padding:14px; border-radius:10px">
+      <h3 class="small">Analysis — ${escapeHtml(json.fileName)}</h3>
+      <p class="small">${escapeHtml(json.summary)}</p>
+      <details style="margin-top:12px">
+        <summary class="small">Show raw JSON</summary>
+        <pre class="code">${escapeHtml(JSON.stringify(json,null,2))}</pre>
+      </details>
+    </div>`;
+}
+```
+
+* Displays the analysis summary.
+* Adds a collapsible `<details>` section to view raw JSON.
+
+---
+
+### Escape HTML (for security)
+
+```js
+function escapeHtml(s){
+  return String(s).replace(/[&<>"']/g, c => ({
+    '&':'&amp;',
+    '<':'&lt;',
+    '>':'&gt;',
+    '"':'&quot;',
+    '\'':'&#39;'
+  })[c]);
+}
+```
+
+* Prevents **HTML injection** by converting special characters to safe codes.
+
+---
+
+✅ **In short:**
+This page lets you:
+
+1. Select a file (PDF, CSV, XLSX, JSON).
+2. Upload it to S3 via backend-signed URL.
+3. Wait for a Bedrock/Lambda process to analyze it.
+4. Display the analysis results in a user-friendly card.
+
+---
+
+
